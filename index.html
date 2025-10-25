@@ -1,6 +1,4 @@
-# Лендинг: Осенняя игра "Почисти листья" с реальными акциями
-
-## HTML/CSS/JavaScript код лендинга с интерактивной игрой и динамическими акциями
+# Лендинг с Telegram интеграцией - ГОТОВ К ИСПОЛЬЗОВАНИЮ
 
 ```html
 <!DOCTYPE html>
@@ -228,8 +226,7 @@
             font-weight: bold;
         }
 
-        .form-group input,
-        .form-group select {
+        .form-group input {
             width: 100%;
             padding: 12px;
             border: 1px solid #ddd;
@@ -238,8 +235,7 @@
             font-family: 'Arial', sans-serif;
         }
 
-        .form-group input:focus,
-        .form-group select:focus {
+        .form-group input:focus {
             outline: none;
             border-color: #ff6b35;
             box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
@@ -263,6 +259,11 @@
             box-shadow: 0 5px 20px rgba(255, 107, 53, 0.4);
         }
 
+        .order-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
         .next-btn {
             width: 100%;
             padding: 15px;
@@ -280,6 +281,22 @@
         .next-btn:hover {
             transform: translateY(-2px);
             background: #777;
+        }
+
+        .success-message {
+            display: none;
+            background: #4caf50;
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin-top: 20px;
+            font-size: 16px;
+        }
+
+        .success-message.show {
+            display: block;
+            animation: slideIn 0.3s ease-in;
         }
 
         .testimonials {
@@ -399,7 +416,10 @@
                     <label for="address">Адрес доставки</label>
                     <input type="text" id="address" placeholder="ул. Примерная, д. 1">
                 </div>
-                <button class="order-btn" onclick="placeOrder()">Оформить заказ</button>
+                <button class="order-btn" id="orderBtn" onclick="placeOrder()">Оформить заказ</button>
+                <div class="success-message" id="successMessage">
+                    ✅ Спасибо за заказ! Мы свяжемся с вами в ближайшее время.
+                </div>
             </div>
 
             <button class="next-btn" onclick="location.reload()">Играть снова</button>
@@ -429,6 +449,10 @@
     </div>
 
     <script>
+        // ✅ ВАШИ ДАННЫЕ TELEGRAM
+        const TELEGRAM_BOT_TOKEN = '8318266784:AAEMm9ODwttqCr3gbATJrjfU7Vkz0eBrcls';
+        const TELEGRAM_CHAT_ID = '450860374';
+
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
@@ -441,7 +465,6 @@
         const leafColors = ['#ff6b35', '#ff9a3d', '#d4a574', '#8b4513', '#cd853f'];
         const leafEmojis = ['🍂', '🍁'];
 
-        // ВСЕ ВАШИ АКТИВНЫЕ АКЦИИ - ДОБАВЛЯЙТЕ СЮДА
         const activeOffers = [
             {
                 title: "Пять пицц 31 см",
@@ -691,21 +714,71 @@
             document.getElementById('resultsSection').classList.add('active');
         }
 
+        // ОТПРАВКА В TELEGRAM
+        async function sendToTelegram(name, phone, address, offer) {
+            const message = `
+🎮 НОВЫЙ ЗАКАЗ ИЗ ИГРЫ!
+
+👤 Имя: ${name}
+📱 Телефон: ${phone}
+📍 Адрес: ${address}
+🎁 Акция: ${offer}
+`;
+
+            const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+            
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        chat_id: TELEGRAM_CHAT_ID,
+                        text: message,
+                        parse_mode: 'HTML'
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.ok) {
+                    console.log('✅ Заказ отправлен в Telegram!');
+                    return true;
+                } else {
+                    console.error('❌ Ошибка:', data.description);
+                    return false;
+                }
+            } catch (error) {
+                console.error('❌ Ошибка отправки:', error);
+                return false;
+            }
+        }
+
         function placeOrder() {
             const name = document.getElementById('name').value;
             const phone = document.getElementById('phone').value;
             const address = document.getElementById('address').value;
             const offer = document.getElementById('prizeTitle').textContent;
+            const btn = document.getElementById('orderBtn');
 
             if (!name || !phone || !address) {
                 alert('Пожалуйста, заполните все поля!');
                 return;
             }
 
-            alert(`Спасибо за заказ, ${name}! \n\nВаше спецпредложение: ${offer}\n\nМы свяжемся с вами по номеру ${phone} в ближайшее время!`);
+            btn.disabled = true;
+            btn.textContent = 'Отправляю...';
 
-            console.log({
-                name, phone, address, offer, leavesCleared
+            sendToTelegram(name, phone, address, offer).then(success => {
+                if (success) {
+                    document.getElementById('successMessage').classList.add('show');
+                    document.getElementById('orderBtn').style.display = 'none';
+                } else {
+                    alert('Ошибка отправки. Позвоните нам: 600-500');
+                    btn.disabled = false;
+                    btn.textContent = 'Оформить заказ';
+                }
             });
         }
 
@@ -719,31 +792,3 @@
 </body>
 </html>
 ```
-
-## Что изменилось:
-
-✅ **Система случайных акций** - при каждой игре выпадает случайное предложение из вашего списка
-✅ **Реальные ваши акции** - вместо фиксированных промокодов показываются ваши текущие предложения
-✅ **Красивый вывод** - название акции, описание, цена, номер телефона для заказа
-✅ **Легко добавлять новые акции** - просто добавьте новый объект в массив `activeOffers`
-
-## Как добавить ещё акции:
-
-Найдите в коде строку:
-```javascript
-const activeOffers = [
-```
-
-И добавьте новую акцию вот так:
-```javascript
-{
-    title: "Название акции",
-    description: "Описание что получает клиент",
-    price: "Цена или условие",
-    call: "Позвоните: 600-500"
-},
-```
-
-Например, если добавится новая акция, просто скопируйте одну из существующих и отредактируйте текст!
-
-**Всё готово!** 🎉 Теперь при каждой игре выпадает одна из ваших реальных акций!
